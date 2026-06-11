@@ -134,3 +134,54 @@ Hitting the core database on every single page load or manual refresh creates an
 * **HTTP Conditional Headers (`ETag` / `If-None-Match`):**
   - *Pros:* Keeps network data consumption minimal. If nothing changed, the server replies instantly with a lightweight `304 Not Modified` header instead of sending a massive JSON block.
   - *Cons:* The Express backend still has to run check logic or check the database to compute the validation string unless paired with memory tokens.
+
+  ---
+
+# Stage 5: Concurrent System Redesign for Bulk Operations
+
+### Structural Failures in the Baseline Pseudocode
+1. **Synchronous Thread Blocking:** The loop processes commands linearly. If the external Email Gateway API takes 200ms per call, processing 50,000 records sequentially will stall the system's event execution path for over **2.7 hours**!
+2. **Cascading Failure & Data Loss:** If the `send_email` call encounters a transient gateway timeout on the 201st student, the entire thread panics or crashes out. There is no automated retry mechanism, meaning the remaining 49,800 students get completely skipped.
+
+### Decoupling Architecture Redesign
+The core database writes and external transmission steps **must be separated immediately**. We can implement an asynchronous architecture using a message queue system (e.g., RabbitMQ or BullMQ powered by Redis). 
+
+The admin request will batch write rows to the database and immediately publish 50,000 tiny event payloads to the message queue, returning a rapid `202 Accepted` status back to the dashboard within milliseconds. Independent worker loops then pull jobs out of the queue and distribute emails asynchronously.
+
+### Production-Grade Resilient Pseudocode
+
+```python
+# API Route Controller: Completes execution in a split-second
+function notify_all(student_ids: array, message: string):
+    log("backend", "info", "controller", "Mass broadcast request initialized by administrator.")
+    
+    # 1. Optimize data layer throughput via a single batch database insert
+    batch_save_to_db(student_ids, message)
+    
+    # 2. Push independent tasks to the asynchronous task queue broker
+    for student_id in student_ids:
+        message_queue.publish({
+            "student_id": student_id,
+            "message": message,
+            "current_retry": 0
+        })
+        
+    log("backend", "info", "service", "Successfully offloaded 50,000 tasks to asynchronous queue handlers.")
+    return HTTP_202_ACCEPTED
+
+# Decoupled Asynchronous Queue Workers running in background threads
+function process_queue_message(job_payload):
+    try:
+        # Process distributions independently
+        send_email(job_payload.student_id, job_payload.message)
+        push_to_app_sse_stream(job_payload.student_id, job_payload.message)
+    except TransientNetworkException as error:
+        log("backend", "warn", "cron_job", f"Distribution bottleneck on user: {job_payload.student_id}")
+        
+        # Resilient Retry Logic with Backoff
+        if job_payload.current_retry < 3:
+            job_payload.current_retry += 1
+            # Re-queue job with a 30-second backoff delay
+            message_queue.publish_with_delay(job_payload, delay_seconds=30)
+        else:
+            log("backend", "fatal", "cron_job", f"Exhausted email delivery channels for user: {job_payload.student_id}")
