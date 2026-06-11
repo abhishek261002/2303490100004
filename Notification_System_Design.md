@@ -76,3 +76,40 @@ Running the Status Update (For the PATCH /api/v1/notifications/:id/read endpoint
 UPDATE notifications 
 SET is_read = TRUE 
 WHERE id = 'd146095a-0d86-4a34-9e69-3900a14576bc';
+
+---
+
+# Stage 3: High-Volume Query Optimization & Indexing
+
+### Query Performance Critique
+The previous developer's query looks like this:
+```sql
+SELECT * FROM notifications WHERE studentID = 1042 AND isRead = false ORDER BY createdAt ASC;
+```
+Is it accurate? No, it has a functional bug. It sorts by createdAt ASC (oldest first). A real notification feed should show the newest records first (DESC), otherwise students have to scroll past weeks of old alerts to find today's placement news.
+
+Why is it slow? With 5,000,000 records, the database engine is forced to execute a Sequential Scan (Full Table Scan). It evaluates every single row on disk one-by-one, extracts the matches into a temporary memory pool, and spends massive CPU cycles sorting them before returning the result.
+
+Optimization Fix:
+We can resolve this completely by adding a targeted Composite Index covering the search predicates and the sort order:
+```sql
+CREATE INDEX idx_notifications_student_unread_date_desc 
+ON notifications (student_id, is_read, created_at DESC);
+```
+Computational Cost Reduction: This transitions search operations from an expensive linear $O(N)$ lookup straight to an optimal $O(\log N)$ logarithmic index scan. The database reads the exact matches out of memory pre-sorted, dropping execution times down to a few milliseconds.
+
+The "Index Every Column" Pitfall
+Adding an index on every single column to be "safe" is an anti-pattern that slows everything down:
+1.  Every time a new notification is inserted or an old one is marked as read, the database has to update and rewrite every single index tree on disk, killing write throughput.
+2.  It causes massive storage bloat, often making the index files larger than the actual data tables.
+
+#Specialized Analytical Query (Past 7-Day Placements)   
+   To find all students who received a placement alert in the last week, we use an inner join:
+
+   ```sql
+    SELECT DISTINCT s.id, s.roll_number, s.email 
+    FROM students s
+    INNER JOIN notifications n ON s.id = n.student_id
+    WHERE n.notification_type = 'Placement'
+    AND n.created_at >= NOW() - INTERVAL '7 days';
+  ```
