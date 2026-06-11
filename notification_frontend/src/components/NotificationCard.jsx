@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
-import { AccessTime, LabelImportant, NotificationsActive } from '@mui/icons-material';
+import { AccessTime, NotificationsActive } from '@mui/icons-material';
 
 const typeColorMapping = {
   Placement: { bg: '#e8f0fe', text: '#1a73e8', border: '#1a73e8' },
@@ -15,20 +15,20 @@ export default function NotificationCard({ notification, isRead, onMarkAsRead })
   return (
     <Card 
       onClick={() => onMarkAsRead(ID)}
-      style={{
-        marginBottom: '14px',
+      sx={{
+        mb: '14px',
         cursor: 'pointer',
         borderLeft: `6px solid ${design.border}`,
         backgroundColor: isRead ? '#fafafa' : '#ffffff',
         opacity: isRead ? 0.75 : 1,
       }}
     >
-      <CardContent style={{ padding: '16px', position: 'relative' }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1} mb={1}>
+      <CardContent sx={{ p: '16px', position: 'relative', '&:last-child': { pb: '16px' } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1 }}>
           <Chip 
             label={Type} 
             size="small" 
-            style={{ 
+            sx={{ 
               backgroundColor: design.bg, 
               color: design.text, 
               fontWeight: 700,
@@ -36,8 +36,8 @@ export default function NotificationCard({ notification, isRead, onMarkAsRead })
             }} 
           />
           
-          <Box display="flex" alignItems="center" color="text.secondary">
-            <AccessTime style={{ fontSize: '1rem', marginRight: '4px' }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+            <AccessTime sx={{ fontSize: '1rem', mr: '4px' }} />
             <Typography variant="caption">
               {Timestamp}
             </Typography>
@@ -46,10 +46,10 @@ export default function NotificationCard({ notification, isRead, onMarkAsRead })
 
         <Typography 
           variant="body1" 
-          style={{ 
+          sx={{ 
             fontWeight: isRead ? 400 : 600,
             color: isRead ? '#5f6368' : '#202124',
-            marginTop: '8px'
+            mt: '8px'
           }}
         >
           {Message}
@@ -57,15 +57,17 @@ export default function NotificationCard({ notification, isRead, onMarkAsRead })
 
         {!isRead && (
           <Box 
-            position="absolute" 
-            top="16px" 
-            right="16px" 
-            display="flex" 
-            alignItems="center"
-            color="secondary.main"
+            sx={{
+              position: 'absolute', 
+              top: '16px', 
+              right: '16px', 
+              display: 'flex', 
+              alignItems: 'center',
+              color: 'secondary.main'
+            }}
           >
-            <NotificationsActive style={{ fontSize: '0.85rem', marginRight: '4px' }} />
-            <Typography variant="caption" style={{ fontWeight: 700 }}>NEW</Typography>
+            <NotificationsActive sx={{ fontSize: '0.85rem', mr: '4px' }} />
+            <Typography variant="caption" sx={{ fontWeight: 700 }}>NEW</Typography>
           </Box>
         )}
       </CardContent>

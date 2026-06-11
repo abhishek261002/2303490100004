@@ -8,12 +8,10 @@ export default function MainFeedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Parameter State Flags mapped precisely to API specs
   const [page, setPage] = useState(1);
   const [filterType, setFilterType] = useState('');
   const [viewedIds, setViewedIds] = useState([]);
 
-  // Load viewed records tracking list from storage cache
   useEffect(() => {
     const cachedViewed = JSON.parse(localStorage.getItem('viewed_notifications') || '[]');
     setViewedIds(cachedViewed);
@@ -24,7 +22,6 @@ export default function MainFeedPage() {
       setLoading(true);
       setError('');
       try {
-        // Enforcing standard limit slice size of 10 for streamlined views
         const data = await fetchNotifications(page, 10, filterType);
         setNotifications(data.notifications || []);
       } catch (err) {
@@ -45,13 +42,22 @@ export default function MainFeedPage() {
   };
 
   return (
-    <Container maxWidth="md" style={{ marginTop: '24px', paddingBottom: '40px' }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+    <Container maxWidth="md" sx={{ mt: '24px', pb: '40px' }}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3, 
+          flexWrap: 'wrap', 
+          gap: 2 
+        }}
+      >
         <Typography variant="h4" color="text.primary">
           Campus Announcements
         </Typography>
         
-        <FormControl size="small" style={{ minWidth: 160 }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel>Filter Category</InputLabel>
           <Select
             value={filterType}
@@ -69,9 +75,9 @@ export default function MainFeedPage() {
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
       {loading ? (
-        <Box display="flex" justifyContent="center" my={8}><CircularProgress /></Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 8 }}><CircularProgress /></Box>
       ) : notifications.length === 0 ? (
-        <Typography color="text.secondary" align="center" my={4}>No notifications available matching this category.</Typography>
+        <Typography color="text.secondary" align="center" sx={{ my: 4 }}>No notifications available matching this category.</Typography>
       ) : (
         <Box>
           {notifications.map((item) => (
@@ -83,9 +89,9 @@ export default function MainFeedPage() {
             />
           ))}
           
-          <Box display="flex" justifyContent="center" mt={4}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
             <Pagination
-              count={5} // Setting baseline standard pages count block for the mockup stream bounds
+              count={5}
               page={page}
               onChange={(e, val) => setPage(val)}
               color="primary"
