@@ -113,3 +113,24 @@ Adding an index on every single column to be "safe" is an anti-pattern that slow
     WHERE n.notification_type = 'Placement'
     AND n.created_at >= NOW() - INTERVAL '7 days';
   ```
+
+
+  ---
+
+# Stage 4: Cache Eviction & Database Offloading Strategies
+
+Hitting the core database on every single page load or manual refresh creates an unnecessary bottleneck. We can protect PostgreSQL by deploying an in-memory caching tier like **Redis** using a **Cache-Aside Pattern**.
+
+### 1. Cache-Aside Optimization Layout
+- When a student opens the dashboard, the backend app checks Redis first using a key pattern like `user:1042:unread_notifications`.
+- **Cache Hit:** If the data is found in Redis, it returns it instantly within sub-milliseconds without touching disk storage.
+- **Cache Miss:** If it's not in Redis, the server runs the PostgreSQL query, sends the rows back to the user, and asynchronously populates Redis with a short TTL (Time-To-Live) window like 5 minutes.
+- **Eviction/Invalidation Strategy:** Whenever a student clicks an alert and hits our `PATCH` endpoint to mark it as read, the backend must immediately delete or invalidate that student's specific Redis cache key so their next refresh pulls fresh database records.
+
+### 2. Strategy Tradeoffs
+* **Redis Caching:**
+  - *Pros:* Drastically slashes database read metrics and handles high-frequency polling easily.
+  - *Cons:* Adds architectural footprint and exposes a risk of serving stale alerts if the invalidation code fails during a state change.
+* **HTTP Conditional Headers (`ETag` / `If-None-Match`):**
+  - *Pros:* Keeps network data consumption minimal. If nothing changed, the server replies instantly with a lightweight `304 Not Modified` header instead of sending a massive JSON block.
+  - *Cons:* The Express backend still has to run check logic or check the database to compute the validation string unless paired with memory tokens.
