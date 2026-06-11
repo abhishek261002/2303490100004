@@ -15,7 +15,7 @@
   ```http
   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJhYmhpc2hla3IyNjEwMDJAZ21haWwuY29tIiwiZXhwIjoxNzgxMTYyNjY0LCJpYXQiOjE3ODExNjE3NjQsImlzcyI6IkFmZm9yZCBNZWRpY2FsIFRlY2hub2xvZ2llcyBQcml2YXRlIExpbWl0ZWQiLCJqdGkiOiI0OWE5OWU3Zi1iZmJjLTRkNzctOTlhNy0xM2ViYWFiMTBlOWMiLCJsb2NhbGUiOiJlbi1JTiIsIm5hbWUiOiJhYmhpc2hlayByYWpwdXQiLCJzdWIiOiI3NjQ1ZGQ2Ni05YjFlLTQyZTctOWM2YS00Y2I4NDFlMTNiZWYifSwiZW1haWwiOiJhYmhpc2hla3IyNjEwMDJAZ21haWwuY29tIiwibmFtZSI6ImFiaGlzaGVrIHJhanB1dCIsInRFly00NoIjoiMjMwMzQ5MDEwMDAwNCIsImFjY2Vzc0NvZGUiOiJCQVZEU2giLCJjbGllbnREIjoiNzY0NWRkNjYtOWIxZS00MmU3LTljNmEtNGNiODQxZTEzYmVmIiwiY2xpZW50U2VjcmV0IjoiUHVKeFluSGFla0tIY3BidCJ9.cx-IRIpXj-7Y5hc-GMRAtEqtE5C_LSiOTfC1SpYUwd8
   Accept: application/json
-
+```
 # Stage 2: Database Layer & High-Volume Scale Architecture
 
 ### 1. Suggested Storage Engine: PostgreSQL (Relational DBMS)
@@ -185,3 +185,15 @@ function process_queue_message(job_payload):
             message_queue.publish_with_delay(job_payload, delay_seconds=30)
         else:
             log("backend", "fatal", "cron_job", f"Exhausted email delivery channels for user: {job_payload.student_id}")
+
+
+
+---
+
+# Stage 6: Stream Sorting & Algorithm Maintenance
+
+### 1. Algorithmic Approach
+To calculate the true importance of an incoming notification without relying on a database, we assign a numerical weight value to each notification category type based on urgency: Placement (3), Result (2), and Event (1). We combine this category tier weight with the notification's date/time string converted into a Unix epoch millisecond value. This mathematical configuration ensures that category tier importance takes priority, while sorting items by recency within the same tier level.
+
+### 2. Stream Maintenance Strategy
+When handling a live stream of high-frequency notification entries on the client, running a full array sort on every single update will freeze the application thread. Instead of sorting a flat array, we can implement a **Min-Heap structure** restricted to a maximum size of `n` (10). For every incoming notification, we compute its priority score. If the heap is not full, we insert it. If it is full, we compare its score against the root element (the lowest score in our top 10). If the new item scores higher, we pop the root and insert the new item. This drops insertion costs to an optimal $O(\log n)$ calculation space, protecting system memory.
